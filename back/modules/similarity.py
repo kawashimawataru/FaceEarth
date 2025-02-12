@@ -11,11 +11,13 @@ import mediapipe as mp
 import random
 import math
 
-# ここでは、画像をリサイズ + 類似率を計算する処理を実装
+# ここでは、最終画像をリサイズ + 類似率を計算する処理を実装
 
 
 ################################
 # 画像のリサイズ
+################################
+
 def preprocess_image(image_file):
     # image_file はファイルオブジェクトであることを想定
     image = Image.open(image_file)
@@ -24,6 +26,7 @@ def preprocess_image(image_file):
 
 ################################
 # 画像の類似度計算
+################################
 
 # ピクセルごとの輝度値の差分の総和を用いた手法 
 
@@ -168,6 +171,9 @@ def compute_average_distance(segmentA, segmentB):
 
 ################################
 # 画像内の対応点を線で結んで可視化する
+################################
+
+# 調整はパラメータいじって行う
 
 import random
 
@@ -265,6 +271,7 @@ def draw_matches(face_file, land_file,
 
 ################################
 # 類似度アウトプット
+################################
 
 def find_most_similar_image(target_image_file, target_image_file2):
     target_image = preprocess_image(target_image_file)

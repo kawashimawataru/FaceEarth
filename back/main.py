@@ -5,7 +5,7 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import io
-from similarity import find_most_similar_image, draw_matches
+from modules.similarity import find_most_similar_image, draw_matches
 from fastapi.responses import StreamingResponse  # ← これを追加
 
 app = FastAPI()
