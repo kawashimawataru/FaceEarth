@@ -87,6 +87,32 @@ def calculate_clip_similarity(img1_path, img2_path):
 
 mp_face_mesh = mp.solutions.face_mesh
 
+#グレースケール変換
+def to_grayscale(image_rgb):
+    """
+    RGB配列 (H,W,3) をグレースケール (H,W) に変換して返す
+    OpenCVのCOLOR_RGB2GRAYでOK
+    """
+    return cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
+
+# 顔のCanny輪郭を検出
+def get_face_edges(image_rgb, canny_threshold1=100, canny_threshold2=200):
+    """
+    顔画像のCanny輪郭を返す (shape=(256,256), 0 or 255)
+    """
+    bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
+    edges = cv2.Canny(bgr, canny_threshold1, canny_threshold2)
+    return edges
+
+# 土地画像のCanny輪郭を検出
+def get_land_edges(image_rgb, canny_threshold1=100, canny_threshold2=200):
+    """
+    土地画像のCanny輪郭を返す (shape=(256,256), 0 or 255)
+    """
+    bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
+    edges = cv2.Canny(bgr, canny_threshold1, canny_threshold2)
+    return edges
+
 def get_face_landmarks(image_array_rgb):
     """
     入力: RGB形式 (H,W,3) の numpy配列（PIL→np.arrayしたもの）
@@ -116,6 +142,26 @@ def get_face_landmarks(image_array_rgb):
 
         return landmark_points
 
+# 主要パーツ(目・鼻・口など)のインデックス
+FACE_KEY_INDICES = {
+    "left_eye": list(range(33, 133)),      # 左目周辺 (おおよその範囲)
+    "right_eye": list(range(362, 432)),    # 右目周辺
+    "nose": list(range(165, 197)),         # 鼻筋付近 (ざっくり)
+    "mouth": list(range(267, 302)),        # 口周辺 (外唇)
+}
+
+def extract_important_landmarks(all_landmarks):
+    """
+    468点の中から、「目・鼻・口など主要パーツ」だけを抽出して返す。
+    """
+    important_points = []
+    for key, idx_list in FACE_KEY_INDICES.items():
+        for idx in idx_list:
+            if 0 <= idx < len(all_landmarks):
+                important_points.append(all_landmarks[idx])
+    return important_points
+
+# 顔の輪郭(顎ライン)の抽出
 def get_jaw_contour_points(landmarks):
     """
     - Mediapipeの顔ランドマーク(468点想定)のうち、
@@ -132,6 +178,16 @@ def get_jaw_contour_points(landmarks):
         if i < len(landmarks):
             contour.append(landmarks[i])
     return contour
+
+# Canny で全体の輪郭を取得
+def get_image_contour_mask(image_rgb, canny_threshold1=100, canny_threshold2=200):
+    """
+    - 入力: RGB配列
+    - 出力: 2値マスク (255=輪郭, 0=非輪郭)
+    """
+    bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
+    edges = cv2.Canny(bgr, canny_threshold1, canny_threshold2)
+    return edges  # shape=(H,W), 0 or 255
 
 def pick_random_points_in_land(land_rgb, num_points):
     """土地画像の中でランダム座標を num_points 点抽出"""
@@ -167,6 +223,7 @@ def draw_artistic_matches(face_rgb, land_rgb, face_points, land_points):
         raise ValueError("Failed to encode PNG.")
     return encoded_png.tobytes()
 
+# 類似ピクセル探索 (座標+色差)
 def find_similar_land_point(x_f, y_f, face_rgb, land_rgb, search_radius=10, alpha=0.5):
     """
     - 顔画像 face_rgb 上の座標 (x_f, y_f) と同じ付近の土地画像 land_rgb の範囲を探索
@@ -209,102 +266,98 @@ def find_similar_land_point(x_f, y_f, face_rgb, land_rgb, search_radius=10, alph
                 best_point = (xx, yy)
 
     return best_point
+
+# グレースケール差 + 座標差 で近いピクセルを探索
+def find_similar_land_point_gray(x_f, y_f, face_gray, land_gray,
+                                 search_radius=10, alpha=0.5):
+    """
+    - 戻り値を (best_point, best_score) の形にして、
+      呼び出し側で「score < 閾値」の判定をできるようにする
+    """
+    h_land, w_land = land_gray.shape
+    h_face, w_face = face_gray.shape
+
+    if not (0 <= x_f < w_face and 0 <= y_f < h_face):
+        return (x_f, y_f), float('inf')
+
+    gf = float(face_gray[y_f, x_f])  # 顔のグレー値
+
+    x_min = max(0, x_f - search_radius)
+    x_max = min(w_land - 1, x_f + search_radius)
+    y_min = max(0, y_f - search_radius)
+    y_max = min(h_land - 1, y_f + search_radius)
+
+    best_score = float('inf')
+    best_point = (x_f, y_f)
+
+    for yy in range(y_min, y_max + 1):
+        for xx in range(x_min, x_max + 1):
+            gl = float(land_gray[yy, xx])  # 土地のグレー値
+            dist_coord = math.sqrt((x_f - xx)**2 + (y_f - yy)**2)
+            dist_gray = abs(gf - gl)
+            score = dist_coord + alpha * dist_gray
+            if score < best_score:
+                best_score = score
+                best_point = (xx, yy)
+
+    return best_point, best_score
 ################################
 # 画像内の対応点を線で結んで可視化する
 
 import random
 
 def draw_matches(face_file, land_file,
-                 max_points=10,     # 全顔ランドマークからのサンプリング数
-                 search_radius=10,  # 近傍探索の半径
-                 alpha=0.5,         # 色差重み
-                 highlight_jaw=True # 顔輪郭を強調表示するか
+                 canny_thresh1=100, canny_thresh2=200,
+                 search_radius=10000, alpha=0.5,
+                 score_threshold=3000000.0  # ← ここを調整して閾値を下げる/上げる
                  ):
     """
-    - 顔画像と土地画像を読み込み、Mediapipeで顔ランドマークを取得
-    - そのうち max_points 個をサンプリング
-    - 各ランドマーク (x_f, y_f) に対し、土地画像内の「座標が近く、色差が小さい」点を探索
-    - 左右に画像を並べ、線で結ぶ
-    - 顔輪郭(アゴライン)を別扱いで太線 or 同じ座標近傍に描画
-    - PNGバイナリを返す
+    1) 顔の輪郭は全ピクセルを緑表示
+    2) 顔輪郭ピクセル (x_f,y_f) が見つけた土地座標 (x_l,y_l) のスコアが閾値未満 かつ
+       land_edges[y_l,x_l] > 0 ならマゼンタ表示
     """
-    # 1) 画像をRGBで読み込み (256x256)
+
     face_rgb = preprocess_image(face_file)
     land_rgb = preprocess_image(land_file)
+    h, w, _ = face_rgb.shape
 
-    # 2) 顔ランドマーク取得
-    face_landmarks = get_face_landmarks(face_rgb)
-    if not face_landmarks:
-        # 顔が検出できない場合、仮に3点
-        face_landmarks = [(60,60), (120,120), (100,70)]
+    face_gray = to_grayscale(face_rgb)
+    land_gray = to_grayscale(land_rgb)
 
-    # 3) ランドマーク多すぎる場合はサンプリング
-    n_points = len(face_landmarks)
-    if n_points > max_points:
-        face_landmarks = random.sample(face_landmarks, max_points)
-        n_points = max_points
+    face_edges = get_face_edges(face_rgb, canny_thresh1, canny_thresh2)
+    land_edges = get_land_edges(land_rgb, canny_thresh1, canny_thresh2)
 
-    # (オプション) 顔輪郭 (jaw line) のインデックスだけ別途取得
-    # ここでは "元の" ランドマーク全体に対して抽出しているので
-    # サンプリングとは関係なく、jaw lineを表示したい場合
-    jaw_points = []
-    if highlight_jaw and len(face_landmarks) >= 17:
-        # 本来は "元の468点" から顎ラインを取りたいため、
-        # face_landmarks が既にサンプリングされたものならうまく取れない可能性があります。
-        # → ここでは簡易対応として、「サンプリング前に」もう1回全体を読み直すなどするか、
-        #    もしくは get_jaw_contour_points(...) にサンプリング前のリストを渡す。
-        #    今回は単純化のためにサンプリング後のリストを対象に jaw_line っぽい部分を取ります。
-        jaw_points = face_landmarks[:17]  # 先頭17点を"アゴライン"とみなす (かなり簡易)
-        # 本格的には "元の468点" → get_jaw_contour_points → 17点 という流れがおすすめ。
-
-    # 4) 描画用に BGR 画像を用意し、左右に並べる
     bgr_face = cv2.cvtColor(face_rgb, cv2.COLOR_RGB2BGR)
     bgr_land = cv2.cvtColor(land_rgb, cv2.COLOR_RGB2BGR)
-    combined = np.concatenate([bgr_face, bgr_land], axis=1)  # shape=(256,512,3)
+    combined = np.concatenate([bgr_face, bgr_land], axis=1)
     offset = bgr_face.shape[1]
 
-    # 5) 各ランドマークを土地側に対応づけて線を引く
-    for (x_f, y_f) in face_landmarks:
-        # (a) 顔の近傍にある "似た" 土地座標を探す
-        x_l, y_l = find_similar_land_point(
-            x_f, y_f,
-            face_rgb, land_rgb,
-            search_radius=search_radius, alpha=alpha
-        )
-        color = (
-            np.random.randint(0,255),
-            np.random.randint(0,255),
-            np.random.randint(0,255)
-        )
-        # (b) 左画像に丸、右画像に丸、その間を線で結ぶ
-        cv2.circle(combined, (x_f, y_f), 4, color, -1)
-        cv2.circle(combined, (x_l+offset, y_l), 4, color, -1)
-        cv2.line(combined, (x_f, y_f), (x_l+offset, y_l), color, 2)
+    # 1) 顔輪郭を緑に
+    for y in range(h):
+        for x in range(w):
+            if face_edges[y, x] > 0:
+                combined[y, x] = (0, 255, 0)
 
-    # 6) 顔輪郭を強調表示
-    #    (サンプリング後の先頭17点を輪郭とし、同様に対応づけ)
-    if highlight_jaw and len(jaw_points) > 1:
-        jaw_color = (0, 255, 255)  # 黄色
-        thickness = 3
-        # 複数の連続点を線で結ぶ (アゴライン)
-        for i in range(len(jaw_points)-1):
-            (x0, y0) = jaw_points[i]
-            (x1, y1) = jaw_points[i+1]
-            # 顔側を太線で結ぶ
-            cv2.line(combined, (x0, y0), (x1, y1), jaw_color, thickness)
-            # 土地側も "対応する座標" を探して輪郭っぽく結ぶ
-            (xl0, yl0) = find_similar_land_point(x0, y0, face_rgb, land_rgb,
-                                                 search_radius, alpha)
-            (xl1, yl1) = find_similar_land_point(x1, y1, face_rgb, land_rgb,
-                                                 search_radius, alpha)
-            cv2.line(combined, (xl0+offset, yl0), (xl1+offset, yl1), jaw_color, thickness)
+    # 2) 顔輪郭ピクセルごとに「似た」土地座標を探索し、
+    #    best_score < score_threshold かつ land_edges[y_l,x_l]>0 の場合のみマゼンタ表示
+    for y in range(h):
+        for x in range(w):
+            if face_edges[y, x] > 0:
+                (xl, yl), best_score = find_similar_land_point_gray(
+                    x, y, face_gray, land_gray,
+                    search_radius=search_radius,
+                    alpha=alpha
+                )
+                if best_score < score_threshold:
+                    if 0 <= xl < w and 0 <= yl < h:
+                        if land_edges[yl, xl] > 0:
+                            # 土地側ピクセルをマゼンタ
+                            combined[yl, xl + offset] = (255, 0, 255)
 
-    # 7) PNGエンコードしてバイナリ返却
     success, encoded_png = cv2.imencode(".png", combined)
     if not success:
-        raise ValueError("Failed to encode combined image to PNG.")
+        raise ValueError("Failed to encode final image to PNG.")
     return encoded_png.tobytes()
-
 
 ################################
 # 類似度アウトプット
