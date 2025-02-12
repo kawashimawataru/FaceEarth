@@ -8,4 +8,6 @@ python-multipart
 torch
 scipy
 opencv-python
+mediapipe
+
 git+https://github.com/openai/CLIP.git
