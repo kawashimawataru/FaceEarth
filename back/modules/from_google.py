@@ -149,6 +149,8 @@ def find_best_match(user_image_path):
     user_feature = extract_features_clip(user_image)
 
     # 初期探索座標（例: 東京駅付近 35.6895, 139.6917）
+    # ここをランダムにする
+    # LLMとかで、相手が興味のなさそうな場所に飛ばすとか？
     init_lat, init_lon = 35.6895, 139.6917
 
     # 探索
@@ -183,6 +185,52 @@ def find_best_match(user_image_path):
     # 画像保存例
     best_img_enhanced.save("best_match_enhanced.jpg")
 
+def find_best_match_origin(user_image):
+    """
+    ユーザ画像とマルチスケール探索で集めた衛星画像を比較し、
+    最もCLIP類似度が高い画像を "擬似超解像" して出力するデモ。
+
+    引数:
+        user_image (PIL.Image): ユーザが提供する画像
+    """
+    # 画像はすでにPIL.Imageになっているため、そのまま使用
+    user_feature = extract_features_clip(user_image)
+
+    # 初期探索座標（例: 東京駅付近 35.6895, 139.6917）
+    init_lat, init_lon = 35.6895, 139.6917
+
+    # 探索
+    satellite_images = explore_optimized_area(
+        lat=init_lat,
+        lon=init_lon,
+        initial_radius_km=50,  # 50kmから開始
+        max_iterations=5,
+        num_samples=10
+    )
+
+    # 衛星画像ごとに類似度計算
+    results = []
+    for (sat_img, lat, lon) in satellite_images:
+        sat_feature = extract_features_clip(sat_img)
+        sim = calculate_similarity(user_feature, sat_feature)
+        results.append((sat_img, lat, lon, sim))
+
+    # 類似度でソート（高い順）
+    results.sort(key=lambda x: x[3], reverse=True)
+    best_img, best_lat, best_lon, best_score = results[0]
+
+    # 擬似的な超解像
+    best_img_enhanced = enhance_resolution_cv2(best_img, scale=4)
+
+    # 結果を表示（コンソール）
+    print(f"--- Best Match ---")
+    print(f"Location: lat={best_lat:.5f}, lon={best_lon:.5f}")
+    print(f"Similarity (CLIP cos): {best_score:.4f}")
+    print("Saving result as: best_match_enhanced.jpg")
+
+    # 画像保存例
+    # best_img_enhanced.save("best_match_enhanced.jpg")
+    return best_img_enhanced
 
 ############################
 # メイン

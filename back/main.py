@@ -6,7 +6,9 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import io
 from modules.similarity import find_most_similar_image, draw_matches
+from modules.from_google import find_best_match_origin
 from fastapi.responses import StreamingResponse  # ← これを追加
+from PIL import Image
 
 app = FastAPI()
 
@@ -65,7 +67,7 @@ async def matched_image_endpoint(image: UploadFile = File(...)):
     image_file = io.BytesIO(content)
 
     # 固定の参照画像を読み込む例
-    with open("image_test/森和也_earth.jpg", "rb") as f:
+    with open("modules/best_match_enhanced.jpg", "rb") as f:
         reference_image = io.BytesIO(f.read())
 
     # 2. 画像の比較 + 図示
@@ -74,3 +76,26 @@ async def matched_image_endpoint(image: UploadFile = File(...)):
     # 3. PNG形式にエンコードして StreamingResponse で返却
 
     return StreamingResponse(io.BytesIO(matched_image), media_type="image/png")
+
+@app.post("/google_matched_image")
+async def matched_image_endpoint(image: UploadFile = File(...)):
+    """
+    1. アップロードされた画像を受け取る
+    2. グーグルマップ上で似ている画像を検索
+    3. 処理後の画像を PNG にエンコードして返す
+    """
+
+    # 1. ファイルを読み込み
+    # 画像データをバイナリとして読み込み
+    content = await image.read()
+    image_file = io.BytesIO(content)
+    image_pil = Image.open(image_file).convert("RGB")
+
+    # 2. 画像の比較 + 図示
+    matched_image = find_best_match_origin(image_pil)
+
+    # 3. PNG形式にエンコードして StreamingResponse で返却
+    matched_image_buffer = io.BytesIO()
+    matched_image.save(matched_image_buffer, format="PNG")
+    matched_image_buffer.seek(0)
+    return StreamingResponse(matched_image_buffer, media_type="image/png")
