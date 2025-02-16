@@ -185,7 +185,7 @@ def find_best_match(user_image_path):
     # 画像保存例
     best_img_enhanced.save("best_match_enhanced.jpg")
 
-def find_best_match_origin(user_image):
+def find_best_match_origin(user_image, lat, lon):
     """
     ユーザ画像とマルチスケール探索で集めた衛星画像を比較し、
     最もCLIP類似度が高い画像を "擬似超解像" して出力するデモ。
@@ -195,9 +195,6 @@ def find_best_match_origin(user_image):
     """
     # 画像はすでにPIL.Imageになっているため、そのまま使用
     user_feature = extract_features_clip(user_image)
-
-    # 初期探索座標（例: 東京駅付近 35.6895, 139.6917）
-    init_lat, init_lon = 35.6895, 139.6917
 
     # 探索
     satellite_images = explore_optimized_area(

@@ -92,7 +92,11 @@ async def matched_image_endpoint(image: UploadFile = File(...)):
     image_pil = Image.open(image_file).convert("RGB")
 
     # 2. 画像の比較 + 図示
-    matched_image = find_best_match_origin(image_pil)
+
+    # 初期探索座標（例: 東京駅付近 35.6895, 139.6917）
+    init_lat, init_lon = 35.6895, 139.6917
+
+    matched_image = find_best_match_origin(image_pil, init_lat, init_lon)
 
     # 3. PNG形式にエンコードして StreamingResponse で返却
     matched_image_buffer = io.BytesIO()
