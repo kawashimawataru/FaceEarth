@@ -24,7 +24,9 @@ function UploadPage() {
       alert("画像をアップロードしてください！");
       return;
     }
-    navigate("/questions", { state: { file: selectedFile, imageUrl: uploadedImage } });
+    navigate("/questions", {
+      state: { file: selectedFile, imageUrl: uploadedImage },
+    });
   };
 
   return (

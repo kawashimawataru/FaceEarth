@@ -7,7 +7,7 @@ function ResultPage() {
   const [imageSrc, setImageSrc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0); // 0% -> 100% に疑似的に進行
-  const file = location.state?.file;
+  const file = location.state?.file; // 解析対象
 
   useEffect(() => {
     if (!file) return;
@@ -15,25 +15,23 @@ function ResultPage() {
     const formData = new FormData();
     formData.append("image", file);
 
-    // 疑似的な進捗を実装：インターバルで少しずつ増やす
+    // 疑似的な進捗を実装: 5秒で100%まで
     const timer = setInterval(() => {
-      setProgress((prev) => {
-        if (prev < 100) return prev + 1;
-        return 100;
-      });
-    }, 50); // 50msごとに +1 → 5秒で100%
+      setProgress((prev) => (prev < 100 ? prev + 1 : 100));
+    }, 50);
 
     axios
-      .post("http://127.0.0.1:8000/matched_image", formData, { responseType: "blob" })
+      .post("http://127.0.0.1:8000/matched_image", formData, {
+        responseType: "blob",
+      })
       .then((response) => {
         const imgUrl = URL.createObjectURL(response.data);
-        // 画像のダウンロードが完了したら進捗100%にし、loading終了
+        // 画像が取得できたら100%にし、ロード完了
         setProgress(100);
         setImageSrc(imgUrl);
       })
       .catch((err) => console.error(err))
       .finally(() => {
-        // 画像URLは取得できたが、インターバルが継続中の場合があるので少し待つ
         setTimeout(() => {
           setLoading(false);
           clearInterval(timer);
