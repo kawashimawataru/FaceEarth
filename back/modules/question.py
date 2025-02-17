@@ -1,6 +1,6 @@
 import random
 
-def get_random_questions(question_yesno, question_choice, question_choice2, questions_image):
+def get_random_questions():
     """
     各質問リストから1つずつランダムに取得し、辞書として返す。
     """

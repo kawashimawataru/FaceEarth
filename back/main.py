@@ -3,6 +3,7 @@
 
 # main.py
 from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import io
 from modules.similarity import find_most_similar_image, draw_matches
@@ -105,7 +106,7 @@ async def matched_image_endpoint(image: UploadFile = File(...)):
     matched_image_buffer.seek(0)
     return StreamingResponse(matched_image_buffer, media_type="image/png")
 
-@app.post("/get_random_questions")
+@app.get("/get_random_questions")
 async def random_questions_endpoint():
-    random_questions = get_random_questions(question_yesno, question_choice, question_choice2, questions_image)
+    random_questions = get_random_questions()
     return JSONResponse(content=random_questions)
