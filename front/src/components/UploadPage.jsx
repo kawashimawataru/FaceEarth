@@ -15,22 +15,57 @@ function UploadPage() {
     }
   };
 
-  return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-      <h2 className="text-xl font-bold mb-4">画像アップロード</h2>
-      <input type="file" accept="image/*" onChange={handleFileChange} ref={fileInputRef} hidden />
-      <button className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition" onClick={() => fileInputRef.current.click()}>
-        画像を選択
-      </button>
+  const handleSelectFile = () => {
+    fileInputRef.current.click();
+  };
 
-      {uploadedImage && (
-        <div className="mt-4">
-          <img src={uploadedImage} alt="Uploaded preview" className="w-48 h-auto rounded-lg shadow" />
-          <button className="mt-4 bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition" onClick={() => navigate("/questions", { state: { file: selectedFile, imageUrl: uploadedImage } })}>
+  const handleNext = () => {
+    if (!selectedFile) {
+      alert("画像をアップロードしてください！");
+      return;
+    }
+    navigate("/questions", { state: { file: selectedFile, imageUrl: uploadedImage } });
+  };
+
+  return (
+    <div className="flex flex-col md:flex-row items-center justify-center h-screen bg-gray-100 p-4 space-y-6 md:space-y-0 md:space-x-8">
+      {/* 左側 */}
+      <div className="flex flex-col items-center space-y-4">
+        <h2 className="text-2xl font-bold">画像アップロード</h2>
+        <button
+          className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition"
+          onClick={handleSelectFile}
+        >
+          画像を選択
+        </button>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          ref={fileInputRef}
+          hidden
+        />
+
+        {uploadedImage && (
+          <button
+            className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition"
+            onClick={handleNext}
+          >
             次へ
           </button>
-        </div>
-      )}
+        )}
+      </div>
+
+      {/* 右側: プレビュー */}
+      <div className="max-w-xs">
+        {uploadedImage && (
+          <img
+            src={uploadedImage}
+            alt="Uploaded preview"
+            className="w-full h-auto rounded-lg shadow"
+          />
+        )}
+      </div>
     </div>
   );
 }
