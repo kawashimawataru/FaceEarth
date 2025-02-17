@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import io
 from modules.similarity import find_most_similar_image, draw_matches
 from modules.from_google import find_best_match_origin
+from modules.question import get_random_questions
 from fastapi.responses import StreamingResponse  # ← これを追加
 from PIL import Image
 
@@ -103,3 +104,8 @@ async def matched_image_endpoint(image: UploadFile = File(...)):
     matched_image.save(matched_image_buffer, format="PNG")
     matched_image_buffer.seek(0)
     return StreamingResponse(matched_image_buffer, media_type="image/png")
+
+@app.post("/get_random_questions")
+async def random_questions_endpoint():
+    random_questions = get_random_questions(question_yesno, question_choice, question_choice2, questions_image)
+    return JSONResponse(content=random_questions)
