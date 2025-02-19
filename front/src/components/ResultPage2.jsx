@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import axios from "axios";
 
-function ResultPage() {
+function ResultPage2() {
   const location = useLocation();
   const [imageSrc, setImageSrc] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -74,4 +74,4 @@ function ResultPage() {
   );
 }
 
-export default ResultPage;
+export default ResultPage2;

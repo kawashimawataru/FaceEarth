@@ -16,14 +16,17 @@ function QuestionPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   // ユーザーの回答 (question_id => answer)
   const [answers, setAnswers] = useState({});
+  // エラーメッセージ
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // 質問データを取得
+  // 送信しようとした JSON を画面表示 (デバッグ)
+  const [finalPayload, setFinalPayload] = useState(null);
+
+  // 質問取得
   useEffect(() => {
     axios
       .get("http://127.0.0.1:8000/get_random_questions")
       .then((res) => {
-        // APIが返すJSONはオブジェクト形式 { question_yesno: {...}, question_choice: {...}, ... } の場合
-        // 配列化してまとめる
         const questionArray = Object.values(res.data);
         setQuestions(questionArray);
       })
@@ -33,39 +36,92 @@ function QuestionPage() {
   // ボタン形式の回答
   const handleSelectOption = (questionId, option) => {
     setAnswers((prev) => ({ ...prev, [questionId]: option }));
+    setErrorMessage(""); // エラー解除
   };
 
-  // スライダーの回答 (Yes/No 質問用)
-  // JSONのoptionsが 2つある: [左ラベル, 右ラベル]
+  // Yes/No (スライダー) 質問
   const handleSlider = (question, value) => {
     const val = parseFloat(value);
     const threshold = 0.5;
     const [leftOption, rightOption] = question.options || [];
     if (!leftOption || !rightOption) return;
-
-    // value < 0.5 → leftOption, >= 0.5 → rightOption
     const chosenOption = val < threshold ? leftOption : rightOption;
 
     setAnswers((prev) => ({
       ...prev,
       [question.question_id]: chosenOption,
     }));
-  };
-
-  // 次の質問へ
-  const nextQuestion = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex((prev) => prev + 1);
-    } else {
-      // 最後の質問なら結果画面へ
-      navigate("/result", { state: { file, answers } });
-    }
+    setErrorMessage("");
   };
 
   // 前の質問へ
   const prevQuestion = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex((prev) => prev - 1);
+      setErrorMessage("");
+      setFinalPayload(null);
+    }
+  };
+
+  // 次 or 送信
+  const nextQuestion = async () => {
+    const currentQ = questions[currentQuestionIndex];
+    if (!currentQ) return;
+
+    // 回答されていない場合 → エラー
+    const userAnswer = answers[currentQ.question_id];
+    if (!userAnswer) {
+      setErrorMessage("※ 質問に回答してください。");
+      return;
+    }
+
+    if (currentQuestionIndex < questions.length - 1) {
+      // 次の質問へ
+      setCurrentQuestionIndex((prev) => prev + 1);
+      setErrorMessage("");
+      setFinalPayload(null);
+    } else {
+      // 最終 → サーバーに送信
+      const payload = questions.map((q) => {
+        const answer = answers[q.question_id];
+        let score = {};
+        if (q.scoring && answer && q.scoring[answer]) {
+          score = q.scoring[answer];
+        }
+        return {
+          question_id: q.question_id,
+          question_text: q.question_text,
+          answer,
+          score,
+        };
+      });
+
+      setFinalPayload(payload);
+
+      try {
+        // サーバーに JSON を送信し、レスポンス(テキスト)を受け取る
+        const response = await axios.post(
+          "http://127.0.0.1:8000/map_generate",
+          payload,
+          {
+            headers: { "Content-Type": "application/json" },
+            // 返り値をテキストで受け取る
+            responseType: "text",
+          }
+        );
+        const serverText = response.data; // 返却されたテキスト
+
+        // 次のページへ: fileと一緒に rawText も渡す
+        navigate("/result1", {
+          state: {
+            file,
+            rawText: serverText, // ここでサーバー応答の生テキストを送る
+          },
+        });
+      } catch (err) {
+        console.error(err);
+        setErrorMessage("送信に失敗しました。再度お試しください。");
+      }
     }
   };
 
@@ -73,13 +129,12 @@ function QuestionPage() {
   const currentQuestion = questions[currentQuestionIndex];
   const totalQuestions = questions.length;
 
-  // プログレスバー (％表示)
+  // プログレスバー
   const progressPercent = totalQuestions
     ? Math.floor(((currentQuestionIndex + 1) / totalQuestions) * 100)
     : 0;
 
-  // スライダー表示用の値 (0 or 1)
-  // すでに回答があれば、それを反映
+  // スライダー (Yes/No) の値
   let sliderValue = 0;
   if (currentQuestion && currentQuestion.type === "Yes/No") {
     if (answers[currentQuestion.question_id] === currentQuestion?.options?.[1]) {
@@ -106,16 +161,19 @@ function QuestionPage() {
           質問 {currentQuestionIndex + 1} / {totalQuestions}
         </p>
 
-        {/* 質問表示 */}
         {currentQuestion ? (
           <div className="text-center mb-6">
             <h2 className="text-xl font-semibold mb-4">
               {currentQuestion.question_text}
             </h2>
+            {/* エラーメッセージ */}
+            {errorMessage && (
+              <p className="text-red-500 font-bold mb-2">{errorMessage}</p>
+            )}
 
+            {/* Yes/No → スライダー */}
             {currentQuestion.type === "Yes/No" &&
             currentQuestion.options?.length >= 2 ? (
-              // スライダーUI (2択)
               <div className="flex flex-col items-center mb-6">
                 <input
                   type="range"
@@ -136,7 +194,7 @@ function QuestionPage() {
                 </div>
               </div>
             ) : (
-              // その他 (4択など) → ボタンで回答
+              // その他 → ボタン
               <div className="flex flex-wrap justify-center mb-6">
                 {currentQuestion.options?.map((option) => {
                   const isSelected =
@@ -164,7 +222,7 @@ function QuestionPage() {
           <p>質問を読み込み中...</p>
         )}
 
-        {/* 戻る/次へ ボタン */}
+        {/* ボタン(戻る/次へ) */}
         <div className="flex space-x-4">
           {currentQuestionIndex > 0 && (
             <button
@@ -178,9 +236,19 @@ function QuestionPage() {
             className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition"
             onClick={nextQuestion}
           >
-            {currentQuestionIndex < totalQuestions - 1 ? "次へ" : "解析へ"}
+            {currentQuestionIndex < totalQuestions - 1 ? "次へ" : "送信"}
           </button>
         </div>
+
+        {/* 送信するJSONを画面表示 (デバッグ用) */}
+        {finalPayload && (
+          <div className="mt-6 p-4 bg-gray-100 w-full text-left rounded shadow">
+            <h3 className="text-lg font-bold mb-2 text-gray-700">送信JSON:</h3>
+            <pre className="text-xs text-gray-800">
+              {JSON.stringify(finalPayload, null, 2)}
+            </pre>
+          </div>
+        )}
       </div>
 
       {/* 右側: アップロード画像プレビュー */}

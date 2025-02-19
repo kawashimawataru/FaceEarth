@@ -233,9 +233,9 @@ def find_best_match_origin(user_image, lat, lon):
 # メイン
 ############################
 
-def main():
-    user_image_path = "森和也_face.jpg"  # ここを自分の比較したい画像に変更
-    find_best_match(user_image_path)
+# def main():
+#     user_image_path = "森和也_face.jpg"  # ここを自分の比較したい画像に変更
+#     find_best_match(user_image_path)
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

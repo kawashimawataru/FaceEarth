@@ -5,10 +5,15 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse
+from fastapi import Body
+import json
 import io
 from modules.similarity import find_most_similar_image, draw_matches
 from modules.from_google import find_best_match_origin
 from modules.question import get_random_questions
+from modules.chatbot_call import call_map_generate
+
 from fastapi.responses import StreamingResponse  # ← これを追加
 from PIL import Image
 
@@ -110,3 +115,54 @@ async def matched_image_endpoint(image: UploadFile = File(...)):
 async def random_questions_endpoint():
     random_questions = get_random_questions()
     return JSONResponse(content=random_questions)
+
+@app.post("/map_generate")
+async def map_generate(json_data: list = Body(...)):
+    """
+    1. ユーザーの回答データ（リスト形式）を受け取る
+    2. マップ生成のためのプロンプトを作成
+    3. マップ生成エンドポイントにリクエストを送信
+    4. レスポンスを返す
+    """
+    data_str = json.dumps(json_data, ensure_ascii=False)
+    ansewer = call_map_generate(data_str)
+#     ansewer = """
+
+# {
+#   "candidates": [
+#     {
+#       "avgLogprobs": -0.03646521036476179,
+#       "content": {
+#         "parts": [
+#           {
+#             "text": "```json\n{\n  \"user_responses\": [\n    {\n      \"question_id\": \"Q1-1\",\n      \"question_text\": \"暖かい場所と寒い場所、どちらが好き？\",\n      \"type\": \"YesNo\",\n      \"options\": [\"暖かい\", \"寒い\"],\n      \"user_choice\": \"暖かい\",\n      \"scoring\": { \"warm\": 2, \"tropical\": 2, \"cold\": 0 }\n    },\n    {\n      \"question_id\": \"Q2-1\",\n      \"question_text\": \"自然豊かな場所と都会的な場所、どちらが好き？\",\n      \"type\": \"YesNo\",\n      \"options\": [\"自然豊かな場所\", \"都会的な場所\"],\n      \"user_choice\": \"都会的な場所\",\n      \"scoring\": { \"nature\": 0, \"city\": 2 }\n    },\n    {\n      \"question_id\": \"Q3-1\",\n      \"question_text\": \"アクティブな旅行とゆったりとした旅行、どちらが好き？\",\n      \"type\": \"YesNo\",\n      \"options\": [\"アクティブな旅行\", \"ゆったりとした旅行\"],\n      \"user_choice\": \"ゆったりとした旅行\",\n      \"scoring\": { \"active\": 0, \"relax\": 2 }\n    },\n    {\n      \"question_id\": \"Q4-1\",\n      \"question_text\": \"歴史的な場所と近代的な場所、どちらが好き？\",\n      \"type\": \"YesNo\",\n      \"options\": [\"歴史的な場所\", \"近代的な場所\"],\n      \"user_choice\": \"近代的な場所\",\n      \"scoring\": { \"historical\": 0, \"modern\": 2 }\n    }\n  ]\n}\n```\n\n```python\nuser_responses = {\n  \"user_responses\": [\n    {\n      \"question_id\": \"Q1-1\",\n      \"question_text\": \"暖かい場所と寒い場所、どちらが好き？\",\n      \"type\": \"YesNo\",\n      \"options\": [\"暖かい\", \"寒い\"],\n      \"user_choice\": \"暖かい\",\n      \"scoring\": { \"warm\": 2, \"tropical\": 2, \"cold\": 0 }\n    },\n    {\n      \"question_id\": \"Q2-1\",\n      \"question_text\": \"自然豊かな場所と都会的な場所、どちらが好き？\",\n      \"type\": \"YesNo\",\n      \"options\": [\"自然豊かな場所\", \"都会的な場所\"],\n      \"user_choice\": \"都会的な場所\",\n      \"scoring\": { \"nature\": 0, \"city\": 2 }\n    },\n    {\n      \"question_id\": \"Q3-1\",\n      \"question_text\": \"アクティブな旅行とゆったりとした旅行、どちらが好き？\",\n      \"type\": \"YesNo\",\n      \"options\": [\"アクティブな旅行\", \"ゆったりとした旅行\"],\n      \"user_choice\": \"ゆったりとした旅行\",\n      \"scoring\": { \"active\": 0, \"relax\": 2 }\n    },\n    {\n      \"question_id\": \"Q4-1\",\n      \"question_text\": \"歴史的な場所と近代的な場所、どちらが好き？\",\n      \"type\": \"YesNo\",\n      \"options\": [\"歴史的な場所\", \"近代的な場所\"],\n      \"user_choice\": \"近代的な場所\",\n      \"scoring\": { \"historical\": 0, \"modern\": 2 }\n    }\n  ]\n}\n\n\nlocations = [\n    [\"シンガポール:シンガポール島:1.3521,103.8198\"],\n    [\"ドバイ:ドバイ:25.2048,55.2708\"],\n    [\"香港:香港島:22.2855,114.1577\"]\n]\n\ndescriptions = [\n    \"シンガポール：熱帯の息吹と未来都市の調和。洗練された街並みを散策し、多様な文化に触れ、穏やかな時間を過ごせるでしょう。きらめく夜景は、忘れられない思い出となるでしょう。\",\n    \"ドバイ：砂漠のオアシスに建つ摩天楼。壮大なスケールと近未来的なデザインに圧倒され、贅沢なひとときを満喫できるでしょう。砂漠の静寂と都会の喧騒が織りなす、独特の雰囲気に酔いしれてください。\",\n    \"香港：東洋の真珠と呼ばれる香港。活気あふれる街並みと、伝統と近代が融合した独特の文化があなたを魅了します。維多リア湾の美しい景色を眺めながら、ゆったりとした時間をお過ごしください。\"\n]\n\nprint(locations)\nprint(descriptions)\n```\n"
+#           }
+#         ],
+#         "role": "model"
+#       },
+#       "finishReason": "STOP"
+#     }
+#   ],
+#   "modelVersion": "gemini-1.5-flash",
+#   "usageMetadata": {
+#     "candidatesTokenCount": 1058,
+#     "candidatesTokensDetails": [
+#       {
+#         "modality": "TEXT",
+#         "tokenCount": 1058
+#       }
+#     ],
+#     "promptTokenCount": 776,
+#     "promptTokensDetails": [
+#       {
+#         "modality": "TEXT",
+#         "tokenCount": 776
+#       }
+#     ],
+#     "totalTokenCount": 1834
+#   }
+# }
+
+#     """
+#     print(ansewer)
+    return ansewer
