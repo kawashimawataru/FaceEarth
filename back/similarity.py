@@ -18,9 +18,16 @@ import math
 # 画像のリサイズ
 def preprocess_image(image_file):
     # image_file はファイルオブジェクトであることを想定
-    image = Image.open(image_file)
-    image = image.resize((256, 256))  # リサイズ
-    return np.array(image)
+    try:
+        image = Image.open(image_file)
+        image = image.convert("RGB")  # RGBに変換してチャンネル数を3に固定
+        image = image.resize((256, 256))  # リサイズ
+        return np.array(image)
+    except Exception as e:
+        print(f"Error loading image: {e}")
+        # Return a blank image or raise, depending on desired behavior.
+        # For now, raising to be caught by caller or returning None
+        raise ValueError(f"Failed to process image: {e}")
 
 ################################
 # 画像の類似度計算
@@ -310,22 +317,31 @@ def draw_matches(face_file, land_file,
 # 類似度アウトプット
 
 def find_most_similar_image(target_image_file, target_image_file2):
-    target_image = preprocess_image(target_image_file)
-    target_image2 = preprocess_image(target_image_file2)
-    
-    # 類似度を計算
-    # 輝度値の差分による手法
-    # similarity = calculate_image_similarity_percentage(target_image, reference_image)
+    try:
+        target_image = preprocess_image(target_image_file)
+        target_image2 = preprocess_image(target_image_file2)
+        
+        # 類似度を計算
+        # 輝度値の差分による手法
+        # similarity = calculate_image_similarity_percentage(target_image, reference_image)
 
-    # CLIPによる類似度計算
-    similarity = calculate_clip_similarity(target_image, target_image2)
-    
-    # 変換して Python の float 型にする
-    similarity = float(similarity)
-    
-    return {
-        "similarity": similarity,
-        "latitude": 35.0,
-        "longitude": 139.0
-    }
+        # CLIPによる類似度計算
+        similarity = calculate_clip_similarity(target_image, target_image2)
+        
+        # 変換して Python の float 型にする
+        similarity = float(similarity)
+        
+        return {
+            "similarity": similarity,
+            "latitude": 35.0,
+            "longitude": 139.0
+        }
+    except Exception as e:
+        print(f"Error in find_most_similar_image: {e}")
+        return {
+            "similarity": 0.0,
+            "latitude": 0.0,
+            "longitude": 0.0,
+            "error": str(e)
+        }
 
