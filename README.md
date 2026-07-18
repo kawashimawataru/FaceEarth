@@ -65,6 +65,20 @@ python 01_list_tiles.py && python 02_download_tiles.py && python 03_filter_tiles
 python 04_embed_tiles.py && python 05_metadata.py
 ```
 
+## 公開
+
+公開版: **https://kawashimawataru.github.io/FaceEarth/** (GitHub Pages)
+
+デプロイ手順:
+
+```bash
+cd web
+npm run build -- --base=/FaceEarth/
+cd dist && touch .nojekyll && git init && git add -A && git commit -m deploy
+git push -f https://github.com/kawashimawataru/FaceEarth.git HEAD:gh-pages
+cd .. && rm -rf dist/.git
+```
+
 ## クレジット
 
 - 衛星画像: [Sentinel-2 cloudless](https://s2maps.eu) by [EOX IT Services GmbH](https://eox.at) (CC BY 4.0), 2016 データ
