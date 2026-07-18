@@ -10,7 +10,7 @@ import sys
 import numpy as np
 from global_land_mask import globe
 
-from config import CANDIDATES_JSON, DATA, MAX_ABS_LAT, SAMPLE_REGIONS, ZOOM
+from config import CANDIDATES_JSON, DATA, MAX_LAT, MIN_LAT, SAMPLE_REGIONS, ZOOM
 from tile_math import tile_center, tile_sample_points
 
 
@@ -27,7 +27,7 @@ def main() -> None:
     tiles = []
     for y in range(n):
         lat_c, _ = tile_center(ZOOM, 0, y)
-        if abs(lat_c) > MAX_ABS_LAT:
+        if not (MIN_LAT <= lat_c <= MAX_LAT):
             continue
         for x in range(n):
             lat, lng = tile_center(ZOOM, x, y)

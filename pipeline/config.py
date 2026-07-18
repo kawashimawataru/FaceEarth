@@ -17,7 +17,10 @@ TILE_URL_TEMPLATE = (
 )
 
 ZOOM = 7
-MAX_ABS_LAT = 70.0  # 高緯度の氷原ノイズを除く (アイスランドは残る)
+# 高緯度の氷原ノイズを除く。北はアイスランド・スカンジナビアを残し、
+# 南は南極大陸を丸ごと外す (南極周縁は逆ジオコーディングも破綻するため)
+MAX_LAT = 70.0
+MIN_LAT = -60.0
 
 ROOT = Path(__file__).parent
 DATA = ROOT / "data"            # gitignore 済み (キャッシュ・中間生成物)

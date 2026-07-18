@@ -38,7 +38,10 @@ function load(): Promise<string> {
   loading ??= (async () => {
     const webgpu = await hasWebGPU();
     const device = webgpu ? "webgpu" : "wasm";
-    const dtype = webgpu ? "fp16" : "q8";
+    // dtype はデバイスによらず q8 に統一する。
+    // fp16/q8 を使い分けると同じ顔でも端末によって結果が変わってしまうため、
+    // 「同じ顔なら同じ土地」を優先する (品質差は 06_verify.mjs で監視)。
+    const dtype = "q8";
     const progress_callback = (info: ProgressInfo) => {
       if (info.status === "progress") {
         post({ type: "progress", file: info.file, progress: info.progress });

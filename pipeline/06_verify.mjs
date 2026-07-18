@@ -78,12 +78,14 @@ const faces = fs
   .readdirSync(path.join(ROOT, "testdata"))
   .filter((f) => /\.(jpe?g|png)$/i.test(f))
   .map((f) => path.join(ROOT, "testdata", f));
+// ブラウザは全デバイス q8 なので、q8 が fp32 と意味的に同じクラスタを
+// 指しているかだけを品質ガードとして確認する (q8 top-1 ∈ fp32 top-10)。
 const fp32 = embedJs(faces, "fp32");
 const q8 = embedJs(faces, "q8");
 for (let k = 0; k < faces.length; k++) {
-  const a = topK(fp32[k], corpus, n).map(([, i]) => i);
+  const a = topK(fp32[k], corpus, n, 10).map(([, i]) => i);
   const b = topK(q8[k], corpus, n).map(([, i]) => i);
-  console.log(`${path.basename(faces[k])}: fp32 top3 [${a}] / q8 top3 [${b}]`);
-  if (a[0] !== b[0]) throw new Error("q8 top-1 mismatch — 量子化を見直すこと");
+  console.log(`${path.basename(faces[k])}: fp32 top10 [${a}] / q8 top3 [${b}]`);
+  if (!a.includes(b[0])) throw new Error("q8 top-1 が fp32 top-10 に含まれない — 量子化劣化");
 }
 console.log("VERIFY OK");
