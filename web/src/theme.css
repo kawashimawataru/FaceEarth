@@ -1,0 +1,125 @@
+/*
+ * FaceEarth デザイントークン
+ * 方向性: 衛星リモートセンシング × 見立て(占い)。
+ * 夜の軌道から見た地球の墨色を地に、測量記号のアンバーを注釈色に。
+ * 経緯線(graticule)が構造、明朝が語り、等幅が計測データ。
+ */
+
+:root {
+  /* 色 — 夜側の地球 */
+  --ink-0: #07090f; /* 軌道の闇 */
+  --ink-1: #0d1119; /* 地 */
+  --ink-2: #151b27; /* パネル */
+  --line: #232b3a; /* 経緯線・罫線 */
+  --line-soft: #1a2130;
+
+  /* 色 — 昼側の地表(衛星画像由来のアクセント) */
+  --amber: #e0a458; /* 測量アンバー: 注釈・強調・マーカー */
+  --amber-dim: #8a6a3f;
+  --forest: #4c6b4f;
+  --desert: #c89b6d;
+  --ice: #dce3e8;
+
+  /* 文字色 */
+  --text: #d6d2c4; /* 月光の紙色 */
+  --text-dim: #86836f;
+  --text-faint: #565545;
+
+  /* 書体 */
+  --font-display: "Shippori Mincho B1", "Hiragino Mincho ProN", serif;
+  --font-body: "IBM Plex Sans JP", "Hiragino Kaku Gothic ProN", sans-serif;
+  --font-mono: "IBM Plex Mono", "Menlo", monospace;
+
+  /* 寸法 */
+  --measure: 40rem; /* 本文の最大幅 */
+  --radius: 2px; /* 地図製図の硬さを保つ */
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  background: var(--ink-0);
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--text);
+  background: var(--ink-0);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* 経緯線の地紋 — 画面全体にごく薄く敷く */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, var(--line-soft) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--line-soft) 1px, transparent 1px);
+  background-size: 96px 96px;
+  opacity: 0.35;
+  z-index: 0;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.06em;
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+::selection {
+  background: var(--amber);
+  color: var(--ink-0);
+}
+
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 汎用: 計測ラベル(眉見出し) */
+.survey-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+/* 汎用: 座標などの計測値 */
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
