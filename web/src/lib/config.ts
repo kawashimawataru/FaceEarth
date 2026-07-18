@@ -25,7 +25,7 @@ export const FACE_LANDMARKER_URL = `${import.meta.env.BASE_URL}models/face_landm
  * 埋め込んだ画像と画面に見せる画像を一致させる。
  */
 export const TILE_URL_TEMPLATE =
-  "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2016_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg";
+  "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg";
 
 export const TILE_ATTRIBUTION =
   '<a href="https://s2maps.eu">Sentinel-2 cloudless</a> by <a href="https://eox.at">EOX IT Services GmbH</a> (CC BY 4.0)';
