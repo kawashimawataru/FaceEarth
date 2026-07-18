@@ -1,5 +1,10 @@
-import type { MatchResult } from "../lib/matcher";
+import { useEffect, useState } from "react";
+import { loadCorpus, type MatchResult } from "../lib/matcher";
+import { tellFortune } from "../lib/narrative";
 import { formatDMS, tileUrl } from "../lib/tiles";
+import ArtCanvas from "./ArtCanvas";
+import FortuneText from "./FortuneText";
+import GlobeView from "./GlobeView";
 
 interface Props {
   image: ImageBitmap;
@@ -8,8 +13,14 @@ interface Props {
   onRestart: () => void;
 }
 
-export default function ResultView({ imageUrl, matches, onRestart }: Props) {
+export default function ResultView({ image, imageUrl, matches, onRestart }: Props) {
   const best = matches[0];
+  const [corpusSize, setCorpusSize] = useState(0);
+
+  useEffect(() => {
+    loadCorpus().then((c) => setCorpusSize(c.n));
+  }, []);
+
   if (!best) return null;
 
   return (
@@ -22,6 +33,8 @@ export default function ResultView({ imageUrl, matches, onRestart }: Props) {
           {placeName(best)} でした。
         </h2>
       </div>
+
+      <GlobeView lat={best.meta.lat} lng={best.meta.lng} />
 
       <div className="result-pair">
         <figure className="result-face">
@@ -37,6 +50,10 @@ export default function ResultView({ imageUrl, matches, onRestart }: Props) {
           <figcaption className="mono">{formatDMS(best.meta.lat, best.meta.lng)}</figcaption>
         </figure>
       </div>
+
+      {corpusSize > 0 && <FortuneText text={tellFortune(best, corpusSize)} />}
+
+      <ArtCanvas image={image} match={best} />
 
       <ol className="result-list">
         {matches.map((m) => (

@@ -285,6 +285,96 @@
   color: var(--text-faint);
 }
 
+/* ---------- Globe ---------- */
+
+.globe {
+  width: 100%;
+  height: clamp(320px, 55vh, 520px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.globe-marker {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 0 0 rgba(224, 164, 88, 0.6);
+  animation: marker-pulse 2s ease-out infinite;
+}
+
+@keyframes marker-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(224, 164, 88, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 0 22px rgba(224, 164, 88, 0);
+  }
+}
+
+/* ---------- Fortune ---------- */
+
+.fortune {
+  max-width: var(--measure);
+}
+
+.fortune-text {
+  margin-top: 1rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  line-height: 2.3;
+  min-height: 7em;
+}
+
+.fortune-cursor {
+  color: var(--amber);
+  animation: cursor-blink 1s steps(2) infinite;
+}
+
+@keyframes cursor-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ---------- Art ---------- */
+
+.art {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.art-canvas {
+  width: 100%;
+  max-width: 744px;
+  border: 1px solid var(--line);
+  background: var(--ink-1);
+}
+
+.art-message {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.art-save {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid var(--amber-dim);
+  color: var(--amber);
+  padding: 0.55rem 1.4rem;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.art-save:hover {
+  border-color: var(--amber);
+  background: rgba(224, 164, 88, 0.08);
+}
+
 .result-footnote {
   font-size: 0.72rem;
   color: var(--text-faint);

@@ -92,15 +92,26 @@ export function match(query: Float32Array, corpus: Corpus, k = TOP_K): MatchResu
     if (dot > max) max = dot;
   }
 
-  const order = Array.from({ length: n }, (_, i) => i)
-    .sort((a, b) => scores[b] - scores[a])
-    .slice(0, k);
+  // 同じ地域ばかりが並ばないよう、(国, 地域) 単位で重複を除いて上位 k 件を選ぶ
+  const sorted = Array.from({ length: n }, (_, i) => i).sort(
+    (a, b) => scores[b] - scores[a],
+  );
+  const seen = new Set<string>();
+  const order: number[] = [];
+  for (const idx of sorted) {
+    const key = `${metas[idx].country}|${metas[idx].region}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    order.push(idx);
+    if (order.length >= k) break;
+  }
 
+  // 表示用スコア: min-max 正規化を 40..97 に圧縮 (100.0 と出ると嘘くさいため)
   const range = max - min || 1;
   return order.map((idx, rank) => ({
     meta: metas[idx],
     cosine: scores[idx],
-    resonance: ((scores[idx] - min) / range) * 100,
+    resonance: 40 + ((scores[idx] - min) / range) * 57,
     rank: rank + 1,
   }));
 }
